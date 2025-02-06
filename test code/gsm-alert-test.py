@@ -1,73 +1,46 @@
 from machine import UART, Pin
 import time
 
-# Initialize UART for GSM module
+# Initialize UART for EC200U module
 gsm_uart = UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1))
 
-# GSM power key pin
-PWRKEY = Pin(28, Pin.OUT)
-
-# Phone number to send SMS to (replace with actual number)
-PHONE_NUMBER = "+1234567890"  # Replace with your number
+PHONE_NUMBER = "+919791974658"  # Replace with actual recipient number
 MESSAGE = "ALERT: Emergency situation detected!"
 
-def initialize_gsm():
-    """Power cycle and initialize the GSM module"""
-    # Power cycle the GSM module
-    PWRKEY.value(1)
-    time.sleep(0.5)
-    PWRKEY.value(0)
-    time.sleep(2)
-    
-    # Wait for module to stabilize
-    time.sleep(5)
-    
-    # Send AT commands to configure text mode
-    commands = [
-        'AT\r\n',                    # Test AT command
-        'AT+CMGF=1\r\n',            # Set SMS text mode
-        'AT+CNMI=2,1,0,0,0\r\n'     # Configure new message indications
-    ]
-    
-    for cmd in commands:
-        gsm_uart.write(cmd)
-        time.sleep(1)
-        while gsm_uart.any():
-            response = gsm_uart.read()
-            print(response)
+def send_at_command(command, delay=1):
+    """Send an AT command and return the response."""
+    gsm_uart.write(command.encode() + b'\r\n')
+    time.sleep(delay)
+    response = gsm_uart.read()
+    return response if response else b""
 
-def send_sms(number, message):
-    """Send SMS to specified number"""
-    # Set message destination
-    gsm_uart.write(f'AT+CMGS="{number}"\r\n')
-    time.sleep(1)
-    
-    # Send message content
-    gsm_uart.write(message + chr(26))  # chr(26) is Ctrl+Z
-    time.sleep(2)
-    
-    # Print response
-    while gsm_uart.any():
-        response = gsm_uart.read()
-        print(response)
+def send_sms():
+    """Manually send an SMS using AT commands."""
+    print("Setting SMS to text mode...")
+    response = send_at_command("AT+CMGF=1")
+    print(f"Response: {response}")
 
-def main():
-    print("Initializing GSM module...")
-    initialize_gsm()
-    print("GSM module initialized")
-    
-    print(f"Will send SMS to {PHONE_NUMBER} every 3 seconds")
-    
-    while True:
-        try:
-            print("Sending SMS...")
-            send_sms(PHONE_NUMBER, MESSAGE)
-            print("SMS sent")
-            time.sleep(3)  # Wait 3 seconds before next message
-            
-        except Exception as e:
-            print(f"Error: {e}")
-            time.sleep(1)
+    print(f"Setting recipient number: {PHONE_NUMBER}")
+    response = send_at_command(f'AT+CMGS="{PHONE_NUMBER}"', 2)
+    print(f"Response: {response}")
 
-if __name__ == "__main__":
-    main()
+    if b'>' not in response:
+        print("Error: No '>' prompt received. SMS not sent.")
+        return False
+
+    print("Sending message...")
+    gsm_uart.write(MESSAGE.encode() + b"\x1A")  # CTRL+Z to send
+    time.sleep(5)  # Wait for SMS to send
+
+    response = gsm_uart.read()
+    print(f"Final response: {response}")
+
+    if b"+CMGS:" in response:
+        print("SMS sent successfully!")
+        return True
+    else:
+        print("Failed to send SMS.")
+        return False
+
+# Run the function to send SMS
+send_sms()
