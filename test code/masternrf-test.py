@@ -11,7 +11,7 @@ csn.value(1)
 ce.value(0)
 
 # Initialize SPI at a lower speed for reliability
-spi = SPI(1, baudrate=50000)
+spi = SPI(1, baudrate=115200)
 
 def test_nrf():
     print("Starting NRF24L01 test...")
