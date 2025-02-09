@@ -4,6 +4,11 @@
 // Use predefined Wire objects for RP2040
 #define I2C_0 Wire
 #define I2C_1 Wire1
+#define buzzer 3
+#define vib_mot 19
+#define led 2
+
+#define dist 600
 
 SparkFun_VL53L5CX myImager;
 SparkFun_VL53L5CX myImager2;
@@ -14,6 +19,10 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   Serial.println("Initializing VL53L5CX...");
+
+  pinMode(buzzer, OUTPUT);
+  pinMode(vib_mot,OUTPUT);
+  pinMode(led,OUTPUT);
 
   // Configure I2C buses
   I2C_0.setSDA(4);
@@ -29,7 +38,7 @@ void setup() {
     Serial.println(F("Sensor 1 not found - check wiring."));
     delay(1000);
   }
-  myImager.setResolution(8 * 8);
+  myImager.setResolution(4 * 4);
   myImager.startRanging();
 
   // Initialize Sensor 2
@@ -37,24 +46,45 @@ void setup() {
     Serial.println(F("Sensor 2 not found - check wiring."));
     delay(1000);
   }
-  myImager2.setResolution(8 * 8);
+  myImager2.setResolution(4 * 4);
   myImager2.startRanging();
 }
 
 void loop() {
+      
+
+
   if (myImager.isDataReady()) {
     if (myImager.getRangingData(&measurementData)) {  
       Serial.print("Distance 1 (mm): ");
       Serial.println(measurementData.distance_mm[0]); // Print first measurement
+      if (measurementData.distance_mm[0] <= dist){
+        digitalWrite(led, HIGH);
+      }
+      else 
+        digitalWrite(led,LOW);
     }
+  }
+  else {
+    digitalWrite(led,LOW);
   }
 
   if (myImager2.isDataReady()) {
     if (myImager2.getRangingData(&measurementData2)) {  
       Serial.print("Distance 2 (mm): ");
       Serial.println(measurementData2.distance_mm[0]); // Print first measurement
+      if (measurementData2.distance_mm[0] <= dist){
+        digitalWrite(buzzer, HIGH);
+      }
+      else 
+        digitalWrite(buzzer,LOW);
     }
   }
+  else{
+      digitalWrite(buzzer,LOW);
+  }
+  
+  
 
   delay(100); // Delay for stable readings
 }
